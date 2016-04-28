@@ -8,12 +8,13 @@ Unless required by applicable law or agreed to in writing, software?distributed 
 import logging
 from ..base.calendar import BaseExchangeCalendarEvent, BaseExchangeCalendarService, ExchangeEventOrganizer, ExchangeEventResponse
 from ..base.folder import BaseExchangeFolder, BaseExchangeFolderService
+from ..base.attachment import BaseExchangeAttachment
 from ..base.soap import ExchangeServiceSOAP
 from ..exceptions import FailedExchangeException, ExchangeStaleChangeKeyException, ExchangeItemNotFoundException, ExchangeInternalServerTransientErrorException, ExchangeIrresolvableConflictException, InvalidEventType
 from ..compat import BASESTRING_TYPES
 
 from . import soap_request
-
+import base64
 from lxml import etree
 from copy import deepcopy
 from datetime import date
@@ -289,6 +290,52 @@ class Exchange2010CalendarEvent(BaseExchangeCalendarEvent):
     self.service.send(body)
 
     return self
+
+  def add_attachment(self, file_name, file=None, b64_data=None):
+    """
+    :param str file_name: The attachment name as it will appear in the calendar client.
+    :param file: One of filelike object (only needs to implement read) or file path
+    :param b64_data: An already encoded string
+
+    :raises IOError: When a file path is provided and the file doesn't exist or can't be read
+    :raises TypeError: When invalid base64 data has been passed
+
+    Adds an attachment to the event. Note that this does not send updates, so you might want to call event.update later
+
+    Returns the newly created Exchange2010Attachment on success
+    """
+    # Empty file_name won't work
+    if not file_name:
+      raise ValueError('File name is required')
+
+    # Must have either some data or a file
+    if not b64_data and not file:
+      raise ValueError('You must specify either a base 64 string or a file/filepath value')
+    # Working with b64_data
+    if b64_data:
+      try:
+        base64.b64decode(b64_data)
+      except TypeError:
+        raise TypeError('Base 64 data seems to be invalid')
+      else:
+        data = b64_data
+    else:
+      # file or file path?
+      try:
+        binary = file.read()
+      except AttributeError:
+        # Let this raise an IOError if need be
+        with open(file, 'rb') as f:
+          binary = f.read()
+          data = base64.b64encode(binary)
+      else:
+        data = base64.b64encode(binary)
+
+    root = self.service.send(soap_request.create_attachment(self, file_name, data))
+    # Find the id
+    attachment_id = root.xpath(u'//t:AttachmentId', namespaces=soap_request.NAMESPACES)[0].get('Id')
+    # Create a (non-loaded) Attachment and return that
+    return Exchange2010Attachment(self.service, attachment_id)
 
   def update(self, calendar_item_update_operation_type=u'SendToAllAndSaveCopy', **kwargs):
     """
@@ -914,3 +961,19 @@ class Exchange2010Folder(BaseExchangeFolder):
       return id_element.get(u"Id", None), id_element.get(u"ChangeKey", None)
     else:
       return None, None
+
+
+class Exchange2010Attachment(BaseExchangeAttachment):
+  def _send_soap_request(self, body_type, include_mime_content, filter_html_content):
+    return self.service.send(soap_request.get_attachment(self.attachment_id, body_type, include_mime_content, filter_html_content))
+
+  def _parse_response_for_get_attachment(self, root):
+    try:
+      self._name = root.xpath(u'//t:Name', namespaces=soap_request.NAMESPACES)[0].text
+    except IndexError:
+      raise ValueError('Unable to get item from Exchange')
+
+    try:
+      self._content = root.xpath(u'//t:Content', namespaces=soap_request.NAMESPACES)[0].text
+    except IndexError:
+      raise ValueError('Unable to get item from Exchange')

@@ -10,6 +10,7 @@ from pytz import utc
 from collections import namedtuple
 from pyexchange.base.calendar import ExchangeEventOrganizer, ExchangeEventResponse, RESPONSE_ACCEPTED, RESPONSE_DECLINED, RESPONSE_TENTATIVE, RESPONSE_UNKNOWN
 from pyexchange.exchange2010.soap_request import EXCHANGE_DATE_FORMAT, EXCHANGE_DATETIME_FORMAT  # noqa
+import io
 
 # don't remove this - a few tests import stuff this way
 from ..fixtures import *  # noqa
@@ -44,6 +45,7 @@ RecurringEventYearlyFixture = namedtuple(
   ]
 )
 FolderFixture = namedtuple('FolderFixture', ['id', 'change_key', 'display_name', 'parent_id', 'folder_type'])
+AttachmentFixture = namedtuple('AttachmentFixture', ['id', 'name', 'content'])
 
 TEST_FOLDER = FolderFixture(
   id=u'AABBCCDDEEFF',
@@ -162,6 +164,17 @@ for day in range(20, 25):
       calendar_id='calendar',
     )
   )
+
+TEST_EVENT_ATTACHED = EventFixture(
+  id=u'AABBCCAABBCCDDDD',
+  change_key=u'GGHHIILLMMGGHHIIJJKKLLMM',
+  calendar_id='calendar',
+  subject=u'ғϑεεl τнε нελτ',
+  location=u'𝔴𝔥𝔢𝔯𝔢 𝔦𝔱 𝔰 𝔥𝔬𝔱',
+  start=datetime(year=2050, month=5, day=20, hour=20, minute=42, second=50, tzinfo=utc),
+  end=datetime(year=2050, month=5, day=20, hour=21, minute=43, second=51, tzinfo=utc),
+  body=u'ƚĦЄ $ЦИ Ī$ $ĦĪИĪИǤ',
+)
 
 NOW = datetime.utcnow().replace(microsecond=0).replace(tzinfo=utc)  # If you don't remove microseconds, it screws with datetime comparisions :/
 
@@ -1715,3 +1728,66 @@ LIST_EVENTS_RESPONSE = u"""<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/
     </m:FindItemResponse>
   </s:Body>
 </s:Envelope>"""
+
+ATTACHMENT_NAME = u"tëst strïnġ"
+
+
+CREATE_ATTACHMENT_RESPONSE = u"""<?xml version="1.0" encoding="utf-8" ?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+  <s:Header>
+    <h:ServerVersionInfo xmlns:h="http://schemas.microsoft.com/exchange/services/2006/types" xmlns="http://schemas.microsoft.com/exchange/services/2006/types" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" MajorVersion="15" MinorVersion="1" MajorBuildNumber="396" MinorBuildNumber="30"/>
+  </s:Header>
+  <s:Body xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <m:CreateAttachmentResponse xmlns:m="http://schemas.microsoft.com/exchange/services/2006/messages" xmlns:t="http://schemas.microsoft.com/exchange/services/2006/types">
+      <m:ResponseMessages>
+        <m:CreateAttachmentResponseMessage ResponseClass="Success">
+          <m:ResponseCode>NoError</m:ResponseCode>
+          <m:Attachments>
+            <t:FileAttachment>
+              <t:AttachmentId Id="paRJDH83jrP4KS" RootItemId="{event.id}" RootItemChangeKey="{event.change_key}"/>
+            </t:FileAttachment>
+          </m:Attachments>
+        </m:CreateAttachmentResponseMessage>
+      </m:ResponseMessages>
+    </m:CreateAttachmentResponse>
+  </s:Body>
+</s:Envelope>
+""".format(event=TEST_EVENT_ATTACHED)
+
+READABLE_FILE = io.BytesIO()
+READABLE_FILE.write(u'𝔴𝔥𝔢𝔯𝔢 𝔦𝔱 𝔰 𝔥𝔬𝔱'.encode('utf-8'))
+READABLE_FILE.seek(0)
+
+VALID_BASE64 = 'bHhtbApweXR6CnJlcXVlc3RzCnJlcXVlc3RzLW50bG0='
+INVALID_BASE64 = VALID_BASE64[1:]
+
+ATTACHMENT_DETAILS = AttachmentFixture(name=ATTACHMENT_NAME, content=VALID_BASE64, id="paRJDH83jrP4KS")
+
+GET_ATTACHMENT_RESPONSE = u"""<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"
+               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <s:Header>
+    <t:ServerVersionInfo MajorVersion="8" MinorVersion="0" MajorBuildNumber="662" MinorBuildNumber="0"
+                         xmlns:t="http://schemas.microsoft.com/exchange/services/2006/types"/>
+  </s:Header>
+  <s:Body>
+    <GetAttachmentResponse xmlns:m="http://schemas.microsoft.com/exchange/services/2006/messages"
+                           xmlns:t="http://schemas.microsoft.com/exchange/services/2006/types"
+                           xmlns="http://schemas.microsoft.com/exchange/services/2006/messages">
+      <m:ResponseMessages>
+        <m:GetAttachmentResponseMessage ResponseClass="Success">
+          <m:ResponseCode>NoError</m:ResponseCode>
+          <m:Attachments>
+            <t:FileAttachment>
+              <t:AttachmentId Id="{att.id}"/>
+              <t:Name>{att.name}</t:Name>
+              <t:Content>{att.content}</t:Content>
+            </t:FileAttachment>
+          </m:Attachments>
+        </m:GetAttachmentResponseMessage>
+      </m:ResponseMessages>
+    </GetAttachmentResponse>
+  </s:Body>
+</s:Envelope>
+""".format(att=ATTACHMENT_DETAILS)
