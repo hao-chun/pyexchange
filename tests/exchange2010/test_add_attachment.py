@@ -86,9 +86,15 @@ class Test_AddingAnAttachment(unittest.TestCase):
     )
 
     self.event.add_attachment(ATTACHMENT_NAME, file=READABLE_FILE)
+    # Put back to original
     self.event.refresh_change_key = m
 
     assert calls.__len__() > 0
+
+  def test_cant_add_to_not_yet_created_event(self):
+    self.event._id = None
+    with raises(TypeError):
+        self.event.add_attachment('name', b64_data=VALID_BASE64)
 
   def test_cant_have_empty_name(self):
     with raises(ValueError):

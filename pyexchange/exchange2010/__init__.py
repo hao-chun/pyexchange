@@ -15,6 +15,7 @@ from ..compat import BASESTRING_TYPES
 
 from . import soap_request
 import base64
+import binascii
 from lxml import etree
 from copy import deepcopy
 from datetime import date
@@ -302,8 +303,18 @@ class Exchange2010CalendarEvent(BaseExchangeCalendarEvent):
 
     Adds an attachment to the event. Note that this does not send updates, so you might want to call event.update later
 
-    Returns the newly created Exchange2010Attachment on success
+    Returns the newly created (unloaded) Exchange2010Attachment on success
+
+    **Example**::
+
+        event = calendar.get_event(id='AAAKKK')
+        att = event.add_attachment('File name as it appears in the email', b64_data='bHhtbApweXR6CnJlcXVlc3RzCnJlcXVlc3RzLW50bG0=')
+        att.id # contains the id of the attachment returned
     """
+    # Can't create attachment on non-existant event
+    if not self.id:
+      raise TypeError(u"You can't send invites for an event that hasn't been created yet.")
+
     # Empty file_name won't work
     if not file_name:
       raise ValueError('File name is required')
@@ -315,7 +326,8 @@ class Exchange2010CalendarEvent(BaseExchangeCalendarEvent):
     if b64_data:
       try:
         base64.b64decode(b64_data)
-      except TypeError:
+      # TypeError is raised by python 2, binascii.Error by p3
+      except (TypeError, binascii.Error):
         raise TypeError('Base 64 data seems to be invalid')
       else:
         data = b64_data
@@ -330,6 +342,11 @@ class Exchange2010CalendarEvent(BaseExchangeCalendarEvent):
           data = base64.b64encode(binary)
       else:
         data = base64.b64encode(binary)
+
+    # Let's make sure that data is a string, not bytes, for XML reasons
+    if type(data) == bytes:
+      # being b64 encoded, ascii should work fine
+      data = data.decode('ascii')
 
     root = self.service.send(soap_request.create_attachment(self, file_name, data))
     # Find the id

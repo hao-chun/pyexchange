@@ -424,11 +424,12 @@ def get_attachment(attachment_id, body_type, include_mime_content, filter_html_c
       </soap:Body>
     </soap:Envelope>
     """
-    import logging
-    logger = logging.getLogger('pyexchange')
-    logger.debug(attachment_id, body_type, include_mime_content, filter_html_content)
     return M.GetAttachment(
-        M.AttachmentShape(),
+        M.AttachmentShape(
+            M.BodyType(body_type),
+            M.IncludeMimeContent(include_mime_content),
+            M.FilterHtmlContent(filter_html_content)
+        ),
         M.AttachmentIds(
             T.AttachmentId(Id=attachment_id)
         )
