@@ -4,14 +4,12 @@ Licensed under the Apache License, Version 2.0 (the "License");?you may not use 
 
 Unless required by applicable law or agreed to in writing, software?distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
-import pickle
 import unittest
 from httpretty import HTTPretty, httprettified
 from pytest import raises
 from pyexchange import Exchange2010Service
 
 from pyexchange.connection import ExchangeNTLMAuthConnection
-from pyexchange.base.calendar import ExchangeEventAttendee
 from pyexchange.exceptions import *  # noqa
 from pyexchange.exchange2010 import Exchange2010Attachment
 
@@ -57,7 +55,7 @@ class Test_AddingAnAttachment(unittest.TestCase):
     # Should be an attachment
     assert isinstance(att, Exchange2010Attachment)
     # Shouldn't be loaded
-    assert att._loaded == False
+    assert att._loaded is False
 
   @httprettified
   def test_can_add_from_file_like_object(self):
@@ -73,6 +71,7 @@ class Test_AddingAnAttachment(unittest.TestCase):
     # TODO pick a mock library instead
     m = self.event.refresh_change_key
     calls = []
+
     def been_called():
       calls.append('Called it!')
       self.event._change_key = TEST_EVENT_ATTACHED.change_key

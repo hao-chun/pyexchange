@@ -4,15 +4,12 @@ Licensed under the Apache License, Version 2.0 (the "License");?you may not use 
 
 Unless required by applicable law or agreed to in writing, software?distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
-import pickle
 import unittest
 from httpretty import HTTPretty, httprettified
-from pytest import raises
 from pyexchange import Exchange2010Service
 
 from pyexchange.exchange2010 import Exchange2010Attachment
 from pyexchange.connection import ExchangeNTLMAuthConnection
-from pyexchange.base.calendar import ExchangeEventAttendee
 from pyexchange.exceptions import *  # noqa
 
 import logging
@@ -67,6 +64,7 @@ class Test_GettingAnAttachment(unittest.TestCase):
       content_type='text/xml; charset=utf-8',
     )
     att = Exchange2010Attachment(self.service, ATTACHMENT_DETAILS.id)
-    assert att._loaded == False
-    content = att.content
-    assert att._loaded == True
+    assert att._loaded is False
+    # Simply causes to load
+    att.content
+    assert att._loaded is True

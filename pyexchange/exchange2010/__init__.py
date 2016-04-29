@@ -162,15 +162,15 @@ class Exchange2010CalendarEventList(object):
     """
     log.debug(u"Loading all details")
     if self.count > 0:
-      # Now, empty out the events to prevent duplicates!
+        # Now, empty out the events to prevent duplicates!
       del(self.events[:])
 
-      # Send the SOAP request with the list of exchange ID values.
+    # Send the SOAP request with the list of exchange ID values.
       log.debug(u"Requesting all event details for events: {event_list}".format(event_list=str(self.event_ids)))
       body = soap_request.get_item(exchange_id=self.event_ids, format=u'AllProperties')
       response_xml = self.service.send(body)
 
-      # Re-parse the results for all the details!
+    # Re-parse the results for all the details!
       self._parse_response_for_all_events(response_xml)
 
     return self
@@ -326,13 +326,12 @@ class Exchange2010CalendarEvent(BaseExchangeCalendarEvent):
     if b64_data:
       try:
         base64.b64decode(b64_data)
-      # TypeError is raised by python 2, binascii.Error by p3
-      except (TypeError, binascii.Error):
+      except (TypeError, binascii.Error):  # TypeError is raised by python 2, binascii.Error by p3
         raise TypeError('Base 64 data seems to be invalid')
       else:
         data = b64_data
     else:
-      # file or file path?
+        # file or file path?
       try:
         binary = file.read()
       except AttributeError:
@@ -345,8 +344,7 @@ class Exchange2010CalendarEvent(BaseExchangeCalendarEvent):
 
     # Let's make sure that data is a string, not bytes, for XML reasons
     if type(data) == bytes:
-      # being b64 encoded, ascii should work fine
-      data = data.decode('ascii')
+      data = data.decode('ascii')  # being b64 encoded, ascii should work fine
 
     root = self.service.send(soap_request.create_attachment(self, file_name, data))
     # Find the id

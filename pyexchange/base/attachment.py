@@ -1,9 +1,8 @@
-
-
 BODY_TYPE_BEST = u'Best'
 BODY_TYPE_HTML = u'HTML'
 BODY_TYPE_TEXT = u'Text'
 BODY_TYPES = [BODY_TYPE_BEST, BODY_TYPE_HTML, BODY_TYPE_TEXT]
+
 
 class BaseExchangeAttachment(object):
   def __init__(self, service, attachment_id, load=False):
@@ -38,11 +37,11 @@ class BaseExchangeAttachment(object):
       body_type = BODY_TYPE_BEST
 
     include_mime_content = 'false'
-    if include_mime_content == True:
+    if include_mime_content is True:
       include_mime_content = 'true'
 
     filter_html_content = 'false'
-    if filter_html_content == True:
+    if filter_html_content is True:
       filter_html_content = 'true'
 
     # Send soap request
