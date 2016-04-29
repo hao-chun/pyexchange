@@ -7,7 +7,7 @@ BODY_TYPES = [BODY_TYPE_BEST, BODY_TYPE_HTML, BODY_TYPE_TEXT]
 class BaseExchangeAttachment(object):
   def __init__(self, service, attachment_id, load=False):
     self.service = service
-    self.attachment_id = attachment_id
+    self.id = attachment_id
     if not load:
       self._loaded = False
     else:

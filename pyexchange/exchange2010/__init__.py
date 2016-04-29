@@ -980,7 +980,7 @@ class Exchange2010Folder(BaseExchangeFolder):
 
 class Exchange2010Attachment(BaseExchangeAttachment):
   def _send_soap_request(self, body_type, include_mime_content, filter_html_content):
-    return self.service.send(soap_request.get_attachment(self.attachment_id, body_type, include_mime_content, filter_html_content))
+    return self.service.send(soap_request.get_attachment(self.id, body_type, include_mime_content, filter_html_content))
 
   def _parse_response_for_get_attachment(self, root):
     try:
