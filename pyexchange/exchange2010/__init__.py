@@ -982,6 +982,9 @@ class Exchange2010Attachment(BaseExchangeAttachment):
   def _send_soap_request(self, body_type, include_mime_content, filter_html_content):
     return self.service.send(soap_request.get_attachment(self.id, body_type, include_mime_content, filter_html_content))
 
+  def _send_delete_request(self):
+    return self.service.send(soap_request.delete_attachment(self.id))
+
   def _parse_response_for_get_attachment(self, root):
     try:
       self._name = root.xpath(u'//t:Name', namespaces=soap_request.NAMESPACES)[0].text

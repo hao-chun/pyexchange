@@ -16,6 +16,9 @@ class BaseExchangeAttachment(object):
   def _send_soap_request(self, body_type, include_mime_content, filter_html_content):
     raise NotImplementedError
 
+  def _send_delete_request(self):
+    raise NotImplementedError
+
   def _parse_response_for_get_attachment(root):
     raise NotImplementedError
 
@@ -30,6 +33,11 @@ class BaseExchangeAttachment(object):
     if not self._loaded:
       self.load()
     return self._name
+
+  def delete(self):
+    # Normal SOAP error handling should work here
+    self._send_delete_request()
+
 
   def load(self, body_type=None, include_mime_content=False, filter_html_content=False):
     # Defaults, only valid values

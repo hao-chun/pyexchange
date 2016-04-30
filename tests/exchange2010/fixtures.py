@@ -1731,6 +1731,27 @@ LIST_EVENTS_RESPONSE = u"""<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/
 
 ATTACHMENT_NAME = u"tëst strïnġ"
 
+DELETE_ATTACHMENT_RESPONSE = u"""<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
+               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <soap:Header>
+    <t:ServerVersionInfo MajorVersion="8" MinorVersion="0" MajorBuildNumber="662" MinorBuildNumber="0"
+                         xmlns:t="http://schemas.microsoft.com/exchange/services/2006/types"/>
+  </soap:Header>
+  <soap:Body>
+    <DeleteAttachmentResponse xmlns:m="http://schemas.microsoft.com/exchange/services/2006/messages"
+                              xmlns:t="http://schemas.microsoft.com/exchange/services/2006/types"
+                              xmlns="http://schemas.microsoft.com/exchange/services/2006/messages">
+      <m:ResponseMessages>
+        <m:DeleteAttachmentResponseMessage xsi:type="m:DeleteAttachmentResponseMessageType" ResponseClass="Success">
+          <m:ResponseCode>NoError</m:ResponseCode>
+          <m:RootItemId RootItemId="AAAtAEFkbWluaXN..." RootItemChangeKey="CQAAABYAA..."/>
+        </m:DeleteAttachmentResponseMessage>
+      </m:ResponseMessages>
+    </DeleteAttachmentResponse>
+  </soap:Body>
+</soap:Envelope>"""
 
 CREATE_ATTACHMENT_RESPONSE = u"""<?xml version="1.0" encoding="utf-8" ?>
 <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">

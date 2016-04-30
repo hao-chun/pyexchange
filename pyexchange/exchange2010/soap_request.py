@@ -435,6 +435,29 @@ def get_attachment(attachment_id, body_type, include_mime_content, filter_html_c
         )
     )
 
+def delete_attachment(event_id):
+    """
+    <?xml version="1.0" encoding="utf-8"?>
+    <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+           xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
+           xmlns:t="http://schemas.microsoft.com/exchange/services/2006/types">
+        <soap:Body>
+           <DeleteAttachment xmlns="http://schemas.microsoft.com/exchange/services/2006/messages"
+                  xmlns:t="http://schemas.microsoft.com/exchange/services/2006/types">
+               <AttachmentIds>
+                    <t:AttachmentId Id="AAAtAEFkbWluaX"/>
+                </AttachmentIds>
+            </DeleteAttachment>
+        </soap:Body>
+    </soap:Envelope>
+    """
+    return M.DeleteAttachment(
+        M.AttachmentIds(
+            T.AttachmentId(Id=event_id)
+        )
+    )
+
 def create_attachment(event, file_name, data):
     """ Create attachment
     https://msdn.microsoft.com/en-us/library/aa565877(v=exchg.140).aspx
