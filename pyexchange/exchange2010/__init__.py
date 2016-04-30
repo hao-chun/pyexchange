@@ -555,7 +555,6 @@ class Exchange2010CalendarEvent(BaseExchangeCalendarEvent):
       return None, None
 
   def _parse_response_for_get_event(self, response):
-
     result = self._parse_event_properties(response)
 
     organizer_properties = self._parse_event_organizer(response)
@@ -563,6 +562,9 @@ class Exchange2010CalendarEvent(BaseExchangeCalendarEvent):
       if 'email' not in organizer_properties:
         organizer_properties['email'] = None
       result[u'organizer'] = ExchangeEventOrganizer(**organizer_properties)
+
+    attachment_ids = self._parse_event_attachments(response)
+    result[u'_attachments'] = [Exchange2010Attachment(self.service, attachment_id) for attachment_id in attachment_ids]
 
     attendee_properties = self._parse_event_attendees(response)
     result[u'_attendees'] = self._build_resource_dictionary([ExchangeEventResponse(**attendee) for attendee in attendee_properties])
@@ -658,6 +660,10 @@ class Exchange2010CalendarEvent(BaseExchangeCalendarEvent):
         result['recurrence'] = 'yearly'
 
     return result
+
+  def _parse_event_attachments(self, response):
+    attachments = response.xpath(u'//m:Items/t:CalendarItem/t:Attachments/t:FileAttachment/t:AttachmentId', namespaces=soap_request.NAMESPACES)
+    return [att.get('Id') for att in attachments]
 
   def _parse_event_organizer(self, response):
 

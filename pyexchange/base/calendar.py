@@ -302,6 +302,10 @@ class BaseExchangeCalendarEvent(object):
     if self.resources and len(self.resources) == 1:
       return self.resources[0]
 
+  @property
+  def attachments(self):
+    return self._attachments
+
   def validate(self):
     """ Validates that all required fields are present """
     if not self.start:

@@ -116,6 +116,7 @@ def get_item(exchange_id, format=u"Default"):
   )
   return root
 
+
 def get_calendar_items(format=u"Default", calendar_id=u'calendar', start=None, end=None, max_entries=999999, delegate_for=None):
   start = start.strftime(EXCHANGE_DATETIME_FORMAT)
   end = end.strftime(EXCHANGE_DATETIME_FORMAT)
@@ -405,6 +406,7 @@ def new_event(event):
 
   return root
 
+
 def get_attachment(attachment_id, body_type, include_mime_content, filter_html_content):
     """ Get attachment
         https://msdn.microsoft.com/en-us/library/aa494316(v=exchg.140).aspx
@@ -435,6 +437,7 @@ def get_attachment(attachment_id, body_type, include_mime_content, filter_html_c
         )
     )
 
+
 def delete_attachment(event_id):
     """
     <?xml version="1.0" encoding="utf-8"?>
@@ -457,6 +460,7 @@ def delete_attachment(event_id):
             T.AttachmentId(Id=event_id)
         )
     )
+
 
 def create_attachment(event, file_name, data):
     """ Create attachment
@@ -483,6 +487,7 @@ def create_attachment(event, file_name, data):
             )
         )
     )
+
 
 def delete_event(event):
     """

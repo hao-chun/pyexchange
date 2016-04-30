@@ -12,19 +12,6 @@ from pyexchange.exchange2010 import Exchange2010Attachment
 from pyexchange.connection import ExchangeNTLMAuthConnection
 from pyexchange.exceptions import *  # noqa
 
-import logging
-logger = logging.getLogger("pyexchange")
-logger.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-ch.setFormatter(formatter)
-logger.addHandler(ch)
-fh = logging.FileHandler('test.log')
-fh.setLevel(logging.DEBUG)
-fh.setFormatter(formatter)
-logger.addHandler(fh)
-
 from .fixtures import *  # noqa
 
 config = {
