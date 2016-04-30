@@ -986,12 +986,12 @@ class Exchange2010Attachment(BaseExchangeAttachment):
     return self.service.send(soap_request.delete_attachment(self.id))
 
   def _parse_response_for_get_attachment(self, root):
-    try:
-      self._name = root.xpath(u'//t:Name', namespaces=soap_request.NAMESPACES)[0].text
-    except IndexError:
-      raise ValueError('Unable to get item from Exchange')
-
-    try:
-      self._content = root.xpath(u'//t:Content', namespaces=soap_request.NAMESPACES)[0].text
-    except IndexError:
-      raise ValueError('Unable to get item from Exchange')
+    as_dict = self.service._xpath_to_dict(element=root, property_map={
+      u'_name': {
+        'xpath': u'//t:Name'
+      },
+      u'_content': {
+        'xpath': u'//t:Content'
+      }
+    }, namespace_map=soap_request.NAMESPACES)
+    self.__dict__.update(as_dict)

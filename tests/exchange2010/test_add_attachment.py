@@ -67,6 +67,20 @@ class Test_AddingAnAttachment(unittest.TestCase):
     self.event.add_attachment(ATTACHMENT_NAME, file=READABLE_FILE)
 
   @httprettified
+  def test_can_add_from_file_path(self):
+    HTTPretty.register_uri(
+      HTTPretty.POST, FAKE_EXCHANGE_URL,
+      body=CREATE_ATTACHMENT_RESPONSE.encode('utf-8'),
+      content_type='text/xml; charset=utf-8',
+    )
+    # Create temp file
+    import tempfile
+    with tempfile.NamedTemporaryFile(delete=True) as t:
+      t.write(b'some stuff')
+      t.seek(0)
+      self.event.add_attachment(ATTACHMENT_NAME, file=t.name)
+
+  @httprettified
   def test_should_call_update_key_if_not_available(self):
     # TODO pick a mock library instead
     m = self.event.refresh_change_key
