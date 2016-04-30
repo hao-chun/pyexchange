@@ -38,7 +38,6 @@ class BaseExchangeAttachment(object):
     # Normal SOAP error handling should work here
     self._send_delete_request()
 
-
   def load(self, body_type=None, include_mime_content=False, filter_html_content=False):
     # Defaults, only valid values
     if body_type not in BODY_TYPES:
