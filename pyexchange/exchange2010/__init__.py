@@ -8,12 +8,14 @@ Unless required by applicable law or agreed to in writing, software?distributed 
 import logging
 from ..base.calendar import BaseExchangeCalendarEvent, BaseExchangeCalendarService, ExchangeEventOrganizer, ExchangeEventResponse
 from ..base.folder import BaseExchangeFolder, BaseExchangeFolderService
+from ..base.attachment import BaseExchangeAttachment
 from ..base.soap import ExchangeServiceSOAP
 from ..exceptions import FailedExchangeException, ExchangeStaleChangeKeyException, ExchangeItemNotFoundException, ExchangeInternalServerTransientErrorException, ExchangeIrresolvableConflictException, InvalidEventType
 from ..compat import BASESTRING_TYPES
 
 from . import soap_request
-
+import base64
+import binascii
 from lxml import etree
 from copy import deepcopy
 from datetime import date
@@ -160,15 +162,15 @@ class Exchange2010CalendarEventList(object):
     """
     log.debug(u"Loading all details")
     if self.count > 0:
-      # Now, empty out the events to prevent duplicates!
+        # Now, empty out the events to prevent duplicates!
       del(self.events[:])
 
-      # Send the SOAP request with the list of exchange ID values.
+    # Send the SOAP request with the list of exchange ID values.
       log.debug(u"Requesting all event details for events: {event_list}".format(event_list=str(self.event_ids)))
       body = soap_request.get_item(exchange_id=self.event_ids, format=u'AllProperties')
       response_xml = self.service.send(body)
 
-      # Re-parse the results for all the details!
+    # Re-parse the results for all the details!
       self._parse_response_for_all_events(response_xml)
 
     return self
@@ -289,6 +291,66 @@ class Exchange2010CalendarEvent(BaseExchangeCalendarEvent):
     self.service.send(body)
 
     return self
+
+  def add_attachment(self, file_name, file=None, b64_data=None):
+    """
+    :param str file_name: The attachment name as it will appear in the calendar client.
+    :param file: One of filelike object (only needs to implement read) or file path
+    :param b64_data: An already encoded string
+
+    :raises IOError: When a file path is provided and the file doesn't exist or can't be read
+    :raises TypeError: When invalid base64 data has been passed
+
+    Adds an attachment to the event. Note that this does not send updates, so you might want to call event.update later
+
+    Returns the newly created (unloaded) Exchange2010Attachment on success
+
+    **Example**::
+
+        event = calendar.get_event(id='AAAKKK')
+        att = event.add_attachment('File name as it appears in the email', b64_data='bHhtbApweXR6CnJlcXVlc3RzCnJlcXVlc3RzLW50bG0=')
+        att.id # contains the id of the attachment returned
+    """
+    # Can't create attachment on non-existant event
+    if not self.id:
+      raise TypeError(u"You can't send invites for an event that hasn't been created yet.")
+
+    # Empty file_name won't work
+    if not file_name:
+      raise ValueError('File name is required')
+
+    # Must have either some data or a file
+    if not b64_data and not file:
+      raise ValueError('You must specify either a base 64 string or a file/filepath value')
+    # Working with b64_data
+    if b64_data:
+      try:
+        base64.b64decode(b64_data)
+      except (TypeError, binascii.Error):  # TypeError is raised by python 2, binascii.Error by p3
+        raise TypeError('Base 64 data seems to be invalid')
+      else:
+        data = b64_data
+    else:
+        # file or file path?
+      try:
+        binary = file.read()
+      except AttributeError:
+        # Let this raise an IOError if need be
+        with open(file, 'rb') as f:
+          binary = f.read()
+          data = base64.b64encode(binary)
+      else:
+        data = base64.b64encode(binary)
+
+    # Let's make sure that data is a string, not bytes, for XML reasons
+    if type(data) == bytes:
+      data = data.decode('ascii')  # being b64 encoded, ascii should work fine
+
+    root = self.service.send(soap_request.create_attachment(self, file_name, data))
+    # Find the id
+    attachment_id = root.xpath(u'//t:AttachmentId', namespaces=soap_request.NAMESPACES)[0].get('Id')
+    # Create a (non-loaded) Attachment and return that
+    return Exchange2010Attachment(self.service, attachment_id)
 
   def update(self, calendar_item_update_operation_type=u'SendToAllAndSaveCopy', **kwargs):
     """
@@ -493,7 +555,6 @@ class Exchange2010CalendarEvent(BaseExchangeCalendarEvent):
       return None, None
 
   def _parse_response_for_get_event(self, response):
-
     result = self._parse_event_properties(response)
 
     organizer_properties = self._parse_event_organizer(response)
@@ -501,6 +562,9 @@ class Exchange2010CalendarEvent(BaseExchangeCalendarEvent):
       if 'email' not in organizer_properties:
         organizer_properties['email'] = None
       result[u'organizer'] = ExchangeEventOrganizer(**organizer_properties)
+
+    attachment_ids = self._parse_event_attachments(response)
+    result[u'_attachments'] = [Exchange2010Attachment(self.service, attachment_id) for attachment_id in attachment_ids]
 
     attendee_properties = self._parse_event_attendees(response)
     result[u'_attendees'] = self._build_resource_dictionary([ExchangeEventResponse(**attendee) for attendee in attendee_properties])
@@ -596,6 +660,10 @@ class Exchange2010CalendarEvent(BaseExchangeCalendarEvent):
         result['recurrence'] = 'yearly'
 
     return result
+
+  def _parse_event_attachments(self, response):
+    attachments = response.xpath(u'//m:Items/t:CalendarItem/t:Attachments/t:FileAttachment/t:AttachmentId', namespaces=soap_request.NAMESPACES)
+    return [att.get('Id') for att in attachments]
 
   def _parse_event_organizer(self, response):
 
@@ -914,3 +982,22 @@ class Exchange2010Folder(BaseExchangeFolder):
       return id_element.get(u"Id", None), id_element.get(u"ChangeKey", None)
     else:
       return None, None
+
+
+class Exchange2010Attachment(BaseExchangeAttachment):
+  def _send_soap_request(self, body_type, include_mime_content, filter_html_content):
+    return self.service.send(soap_request.get_attachment(self.id, body_type, include_mime_content, filter_html_content))
+
+  def _send_delete_request(self):
+    return self.service.send(soap_request.delete_attachment(self.id))
+
+  def _parse_response_for_get_attachment(self, root):
+    as_dict = self.service._xpath_to_dict(element=root, property_map={
+      u'_name': {
+        'xpath': u'//t:Name'
+      },
+      u'_content': {
+        'xpath': u'//t:Content'
+      }
+    }, namespace_map=soap_request.NAMESPACES)
+    self.__dict__.update(as_dict)

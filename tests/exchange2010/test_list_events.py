@@ -2,6 +2,7 @@
 import unittest
 from pytest import raises
 from httpretty import HTTPretty, httprettified
+import httpretty
 from pyexchange import Exchange2010Service
 from pyexchange.connection import ExchangeNTLMAuthConnection
 from pyexchange.exceptions import *
@@ -23,8 +24,8 @@ class Test_ParseEventListResponseData(unittest.TestCase):
             )
         )
 
-    @httprettified
     def setUp(self):
+        httpretty.enable()
         HTTPretty.register_uri(
             HTTPretty.POST, FAKE_EXCHANGE_URL,
             body=LIST_EVENTS_RESPONSE.encode('utf-8'),
@@ -39,8 +40,8 @@ class Test_ParseEventListResponseData(unittest.TestCase):
         assert self.event_list is not None
 
     def test_dates_are_in_datetime_format(self):
-        assert 'StartDate="%s"' % TEST_EVENT_LIST_START.strftime(EXCHANGE_DATETIME_FORMAT) in HTTPretty.last_request.body.decode('utf-8')
-        assert 'EndDate="%s"' % TEST_EVENT_LIST_END.strftime(EXCHANGE_DATETIME_FORMAT) in HTTPretty.last_request.body.decode('utf-8')
+        assert 'StartDate="%s"' % TEST_EVENT_LIST_START.strftime(EXCHANGE_DATETIME_FORMAT) in httpretty.last_request().body.decode('utf-8')
+        assert 'EndDate="%s"' % TEST_EVENT_LIST_END.strftime(EXCHANGE_DATETIME_FORMAT) in httpretty.last_request().body.decode('utf-8')
 
     def test_event_count(self):
         assert self.event_list.count == 3

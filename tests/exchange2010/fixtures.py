@@ -10,6 +10,7 @@ from pytz import utc
 from collections import namedtuple
 from pyexchange.base.calendar import ExchangeEventOrganizer, ExchangeEventResponse, RESPONSE_ACCEPTED, RESPONSE_DECLINED, RESPONSE_TENTATIVE, RESPONSE_UNKNOWN
 from pyexchange.exchange2010.soap_request import EXCHANGE_DATE_FORMAT, EXCHANGE_DATETIME_FORMAT  # noqa
+import io
 
 # don't remove this - a few tests import stuff this way
 from ..fixtures import *  # noqa
@@ -44,6 +45,7 @@ RecurringEventYearlyFixture = namedtuple(
   ]
 )
 FolderFixture = namedtuple('FolderFixture', ['id', 'change_key', 'display_name', 'parent_id', 'folder_type'])
+AttachmentFixture = namedtuple('AttachmentFixture', ['id', 'name', 'content'])
 
 TEST_FOLDER = FolderFixture(
   id=u'AABBCCDDEEFF',
@@ -163,6 +165,17 @@ for day in range(20, 25):
     )
   )
 
+TEST_EVENT_ATTACHED = EventFixture(
+  id=u'AABBCCAABBCCDDDD',
+  change_key=u'GGHHIILLMMGGHHIIJJKKLLMM',
+  calendar_id='calendar',
+  subject=u'ғϑεεl τнε нελτ',
+  location=u'𝔴𝔥𝔢𝔯𝔢 𝔦𝔱 𝔰 𝔥𝔬𝔱',
+  start=datetime(year=2050, month=5, day=20, hour=20, minute=42, second=50, tzinfo=utc),
+  end=datetime(year=2050, month=5, day=20, hour=21, minute=43, second=51, tzinfo=utc),
+  body=u'ƚĦЄ $ЦИ Ī$ $ĦĪИĪИǤ',
+)
+
 NOW = datetime.utcnow().replace(microsecond=0).replace(tzinfo=utc)  # If you don't remove microseconds, it screws with datetime comparisions :/
 
 ORGANIZER = ExchangeEventOrganizer(name=u'émmý ńőéthéŕ', email=u'noether@test.linkedin.com')
@@ -192,6 +205,8 @@ RESOURCE = ExchangeEventResponse(name=u'flÿïnġ dïnösäür', email=u'dinosau
 UPDATED_RESOURCE = ExchangeEventResponse(name=u'ɱăğĭč čăřρĕt', email=u'carpet@test.linkedin.com', required=True, response=RESPONSE_ACCEPTED, last_response=NOW - timedelta(days=1))
 
 RESOURCE_WITH_NO_EMAIL_ADDRESS = ExchangeEventResponse(name=u'I am also bad', email=None, required=True, response=RESPONSE_UNKNOWN, last_response=None)
+
+ATTACHMENT_IDS = [u'ɱăğĭč čăřρĕt', u'flÿïnġ dïnösäür']
 
 GET_ITEM_RESPONSE = u"""<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
   <s:Header>
@@ -382,6 +397,209 @@ GET_ITEM_RESPONSE = u"""<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/env
            optional_unknown=PERSON_OPTIONAL_UNKNOWN,
            resource=RESOURCE,
            conflict_event=TEST_CONFLICT_EVENT,
+           )
+
+GET_ITEM_WITH_ATTACHMENTS_RESPONSE = u"""<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+  <s:Header>
+    <h:ServerVersionInfo xmlns:h="http://schemas.microsoft.com/exchange/services/2006/types" xmlns="http://schemas.microsoft.com/exchange/services/2006/types" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" MajorVersion="14" MinorVersion="2" MajorBuildNumber="328" MinorBuildNumber="11"/>
+  </s:Header>
+  <s:Body xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <m:GetItemResponse xmlns:m="http://schemas.microsoft.com/exchange/services/2006/messages" xmlns:t="http://schemas.microsoft.com/exchange/services/2006/types">
+      <m:ResponseMessages>
+        <m:GetItemResponseMessage ResponseClass="Success">
+          <m:ResponseCode>NoError</m:ResponseCode>
+          <m:Items>
+            <t:CalendarItem>
+              <t:ItemId Id="{event.id}" ChangeKey="{event.change_key}"/>
+              <t:ParentFolderId Id="fooo" ChangeKey="bar"/>
+              <t:ItemClass>IPM.Appointment</t:ItemClass>
+              <t:Subject>{event.subject}</t:Subject>
+              <t:Sensitivity>Normal</t:Sensitivity>
+              <t:Body BodyType="HTML">{event.body}</t:Body>
+              <t:Body BodyType="Text">{event.body}</t:Body>
+              <t:Attachments>
+                <t:FileAttachment>
+                  <t:AttachmentId Id="{attachment_id1}"/>
+                  <t:Name>Some filename.txt</t:Name>
+                </t:FileAttachment>
+                <t:FileAttachment>
+                  <t:AttachmentId Id="{attachment_id2}"/>
+                  <t:Name>Some filename.txt</t:Name>
+                </t:FileAttachment>
+              </t:Attachments>
+              <t:DateTimeReceived>{event.start:%Y-%m-%dT%H:%M:%SZ}</t:DateTimeReceived>
+              <t:Size>1935</t:Size>
+              <t:Importance>Normal</t:Importance>
+              <t:IsSubmitted>false</t:IsSubmitted>
+              <t:IsDraft>false</t:IsDraft>
+              <t:IsFromMe>false</t:IsFromMe>
+              <t:IsResend>false</t:IsResend>
+              <t:IsUnmodified>false</t:IsUnmodified>
+              <t:DateTimeSent>{event.start:%Y-%m-%dT%H:%M:%SZ}</t:DateTimeSent>
+              <t:DateTimeCreated>{event.start:%Y-%m-%dT%H:%M:%SZ}</t:DateTimeCreated>
+              <t:ResponseObjects>
+                <t:CancelCalendarItem/>
+                <t:ForwardItem/>
+              </t:ResponseObjects>
+              <t:ReminderDueBy>{event.start:%Y-%m-%dT%H:%M:%SZ}</t:ReminderDueBy>
+              <t:ReminderIsSet>true</t:ReminderIsSet>
+              <t:ReminderMinutesBeforeStart>15</t:ReminderMinutesBeforeStart>
+              <t:DisplayCc/>
+              <t:DisplayTo/>
+              <t:HasAttachments>false</t:HasAttachments>
+              <t:Culture>en-US</t:Culture>
+              <t:Start>{event.start:%Y-%m-%dT%H:%M:%SZ}</t:Start>
+              <t:End>{event.end:%Y-%m-%dT%H:%M:%SZ}</t:End>
+              <t:IsAllDayEvent>false</t:IsAllDayEvent>
+              <t:LegacyFreeBusyStatus>Busy</t:LegacyFreeBusyStatus>
+              <t:Location>{event.location}</t:Location>
+              <t:IsMeeting>true</t:IsMeeting>
+              <t:IsCancelled>false</t:IsCancelled>
+              <t:IsRecurring>false</t:IsRecurring>
+              <t:MeetingRequestWasSent>false</t:MeetingRequestWasSent>
+              <t:IsResponseRequested>true</t:IsResponseRequested>
+              <t:CalendarItemType>Single</t:CalendarItemType>
+              <t:MyResponseType>Organizer</t:MyResponseType>
+              <t:Organizer>
+                <t:Mailbox>
+                  <t:Name>{organizer.name}</t:Name>
+                  <t:EmailAddress>{organizer.email}</t:EmailAddress>
+                  <t:RoutingType>SMTP</t:RoutingType>
+                </t:Mailbox>
+              </t:Organizer>
+              <t:RequiredAttendees>
+                <t:Attendee>
+                  <t:Mailbox>
+                    <t:Name>{required_accepted.name}</t:Name>
+                    <t:EmailAddress>{required_accepted.email}</t:EmailAddress>
+                    <t:RoutingType>SMTP</t:RoutingType>
+                  </t:Mailbox>
+                  <t:ResponseType>{required_accepted.response}</t:ResponseType>
+                  <t:LastResponseTime>{required_accepted.last_response:%Y-%m-%dT%H:%M:%SZ}</t:LastResponseTime>
+                </t:Attendee>
+                <t:Attendee>
+                  <t:Mailbox>
+                    <t:Name>{required_tentative.name}</t:Name>
+                    <t:EmailAddress>{required_tentative.email}</t:EmailAddress>
+                    <t:RoutingType>SMTP</t:RoutingType>
+                  </t:Mailbox>
+                  <t:ResponseType>{required_tentative.response}</t:ResponseType>
+                  <t:LastResponseTime>{required_tentative.last_response:%Y-%m-%dT%H:%M:%SZ}</t:LastResponseTime>
+                </t:Attendee>
+               <t:Attendee>
+                  <t:Mailbox>
+                    <t:Name>{required_declined.name}</t:Name>
+                    <t:EmailAddress>{required_declined.email}</t:EmailAddress>
+                    <t:RoutingType>SMTP</t:RoutingType>
+                  </t:Mailbox>
+                  <t:ResponseType>{required_declined.response}</t:ResponseType>
+                  <t:LastResponseTime>{required_declined.last_response:%Y-%m-%dT%H:%M:%SZ}</t:LastResponseTime>
+                </t:Attendee>
+                <t:Attendee>
+                  <t:Mailbox>
+                    <t:Name>{required_unknown.name}</t:Name>
+                    <t:EmailAddress>{required_unknown.email}</t:EmailAddress>
+                    <t:RoutingType>SMTP</t:RoutingType>
+                  </t:Mailbox>
+                  <t:ResponseType>{required_unknown.response}</t:ResponseType>
+                </t:Attendee>
+              </t:RequiredAttendees>
+              <t:OptionalAttendees>
+                <t:Attendee>
+                  <t:Mailbox>
+                    <t:Name>{optional_accepted.name}</t:Name>
+                    <t:EmailAddress>{optional_accepted.email}</t:EmailAddress>
+                    <t:RoutingType>SMTP</t:RoutingType>
+                  </t:Mailbox>
+                  <t:ResponseType>{optional_accepted.response}</t:ResponseType>
+                  <t:LastResponseTime>{optional_accepted.last_response:%Y-%m-%dT%H:%M:%SZ}</t:LastResponseTime>
+                </t:Attendee>
+                <t:Attendee>
+                  <t:Mailbox>
+                    <t:Name>{optional_tentative.name}</t:Name>
+                    <t:EmailAddress>{optional_tentative.email}</t:EmailAddress>
+                    <t:RoutingType>SMTP</t:RoutingType>
+                  </t:Mailbox>
+                  <t:ResponseType>{optional_tentative.response}</t:ResponseType>
+                  <t:LastResponseTime>{optional_tentative.last_response:%Y-%m-%dT%H:%M:%SZ}</t:LastResponseTime>
+                </t:Attendee>
+               <t:Attendee>
+                  <t:Mailbox>
+                    <t:Name>{optional_declined.name}</t:Name>
+                    <t:EmailAddress>{optional_declined.email}</t:EmailAddress>
+                    <t:RoutingType>SMTP</t:RoutingType>
+                  </t:Mailbox>
+                  <t:ResponseType>{optional_declined.response}</t:ResponseType>
+                  <t:LastResponseTime>{optional_declined.last_response:%Y-%m-%dT%H:%M:%SZ}</t:LastResponseTime>
+                </t:Attendee>
+                <t:Attendee>
+                  <t:Mailbox>
+                    <t:Name>{optional_unknown.name}</t:Name>
+                    <t:EmailAddress>{optional_unknown.email}</t:EmailAddress>
+                    <t:RoutingType>SMTP</t:RoutingType>
+                  </t:Mailbox>
+                  <t:ResponseType>{optional_unknown.response}</t:ResponseType>
+                </t:Attendee>
+              </t:OptionalAttendees>
+              <t:Resources>
+                <t:Attendee>
+                  <t:Mailbox>
+                    <t:Name>{resource.name}</t:Name>
+                    <t:EmailAddress>{resource.email}</t:EmailAddress>
+                    <t:RoutingType>SMTP</t:RoutingType>
+                  </t:Mailbox>
+                  <t:ResponseType>{resource.response}</t:ResponseType>
+                  <t:LastResponseTime>{resource.last_response:%Y-%m-%dT%H:%M:%SZ}</t:LastResponseTime>
+                </t:Attendee>
+              </t:Resources>
+
+              <t:ConflictingMeetingCount>1</t:ConflictingMeetingCount>
+              <t:AdjacentMeetingCount>1</t:AdjacentMeetingCount>
+              <t:ConflictingMeetings>
+                <t:CalendarItem>
+                  <t:ItemId Id="{conflict_event.id}" ChangeKey="{conflict_event.change_key}"/>
+                  <t:Subject>{conflict_event.subject}</t:Subject>
+                  <t:Start>{conflict_event.start:%Y-%m-%dT%H:%M:%SZ}</t:Start>
+                  <t:End>{conflict_event.end:%Y-%m-%dT%H:%M:%SZ}</t:End>
+                  <t:LegacyFreeBusyStatus>Busy</t:LegacyFreeBusyStatus>
+                  <t:Location>{conflict_event.location}</t:Location>
+                </t:CalendarItem>
+              </t:ConflictingMeetings>
+              <t:AdjacentMeetings>
+                <t:CalendarItem>
+                  <t:ItemId Id="dinosaur" ChangeKey="goesrarrr"/>
+                  <t:Subject>my other OTHER awesome event</t:Subject>
+                  <t:Start>{event.start:%Y-%m-%dT%H:%M:%SZ}</t:Start>
+                  <t:End>{event.end:%Y-%m-%dT%H:%M:%SZ}</t:End>
+                  <t:LegacyFreeBusyStatus>Busy</t:LegacyFreeBusyStatus>
+                  <t:Location>Outside</t:Location>
+                </t:CalendarItem>
+              </t:AdjacentMeetings>
+              <t:Duration>PT1H</t:Duration>
+              <t:TimeZone>(UTC-08:00) Pacific Time (US &amp; Canada)</t:TimeZone>
+              <t:AppointmentSequenceNumber>0</t:AppointmentSequenceNumber>
+              <t:AppointmentState>1</t:AppointmentState>
+            </t:CalendarItem>
+          </m:Items>
+        </m:GetItemResponseMessage>
+      </m:ResponseMessages>
+    </m:GetItemResponse>
+  </s:Body>
+</s:Envelope>
+""".format(event=TEST_EVENT,
+           organizer=ORGANIZER,
+           required_accepted=PERSON_REQUIRED_ACCEPTED,
+           required_tentative=PERSON_REQUIRED_TENTATIVE,
+           required_declined=PERSON_REQUIRED_DECLINED,
+           required_unknown=PERSON_REQUIRED_UNKNOWN,
+           optional_accepted=PERSON_OPTIONAL_ACCEPTED,
+           optional_tentative=PERSON_OPTIONAL_TENTATIVE,
+           optional_declined=PERSON_OPTIONAL_DECLINED,
+           optional_unknown=PERSON_OPTIONAL_UNKNOWN,
+           resource=RESOURCE,
+           conflict_event=TEST_CONFLICT_EVENT,
+           attachment_id1=ATTACHMENT_IDS[0],
+           attachment_id2=ATTACHMENT_IDS[1]
            )
 
 CONFLICTING_EVENTS_RESPONSE = u"""<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
@@ -1715,3 +1933,87 @@ LIST_EVENTS_RESPONSE = u"""<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/
     </m:FindItemResponse>
   </s:Body>
 </s:Envelope>"""
+
+ATTACHMENT_NAME = u"tëst strïnġ"
+
+DELETE_ATTACHMENT_RESPONSE = u"""<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
+               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <soap:Header>
+    <t:ServerVersionInfo MajorVersion="8" MinorVersion="0" MajorBuildNumber="662" MinorBuildNumber="0"
+                         xmlns:t="http://schemas.microsoft.com/exchange/services/2006/types"/>
+  </soap:Header>
+  <soap:Body>
+    <DeleteAttachmentResponse xmlns:m="http://schemas.microsoft.com/exchange/services/2006/messages"
+                              xmlns:t="http://schemas.microsoft.com/exchange/services/2006/types"
+                              xmlns="http://schemas.microsoft.com/exchange/services/2006/messages">
+      <m:ResponseMessages>
+        <m:DeleteAttachmentResponseMessage xsi:type="m:DeleteAttachmentResponseMessageType" ResponseClass="Success">
+          <m:ResponseCode>NoError</m:ResponseCode>
+          <m:RootItemId RootItemId="AAAtAEFkbWluaXN..." RootItemChangeKey="CQAAABYAA..."/>
+        </m:DeleteAttachmentResponseMessage>
+      </m:ResponseMessages>
+    </DeleteAttachmentResponse>
+  </soap:Body>
+</soap:Envelope>"""
+
+CREATE_ATTACHMENT_RESPONSE = u"""<?xml version="1.0" encoding="utf-8" ?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+  <s:Header>
+    <h:ServerVersionInfo xmlns:h="http://schemas.microsoft.com/exchange/services/2006/types" xmlns="http://schemas.microsoft.com/exchange/services/2006/types" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" MajorVersion="15" MinorVersion="1" MajorBuildNumber="396" MinorBuildNumber="30"/>
+  </s:Header>
+  <s:Body xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <m:CreateAttachmentResponse xmlns:m="http://schemas.microsoft.com/exchange/services/2006/messages" xmlns:t="http://schemas.microsoft.com/exchange/services/2006/types">
+      <m:ResponseMessages>
+        <m:CreateAttachmentResponseMessage ResponseClass="Success">
+          <m:ResponseCode>NoError</m:ResponseCode>
+          <m:Attachments>
+            <t:FileAttachment>
+              <t:AttachmentId Id="paRJDH83jrP4KS" RootItemId="{event.id}" RootItemChangeKey="{event.change_key}"/>
+            </t:FileAttachment>
+          </m:Attachments>
+        </m:CreateAttachmentResponseMessage>
+      </m:ResponseMessages>
+    </m:CreateAttachmentResponse>
+  </s:Body>
+</s:Envelope>
+""".format(event=TEST_EVENT_ATTACHED)
+
+READABLE_FILE = io.BytesIO()
+READABLE_FILE.write(u'𝔴𝔥𝔢𝔯𝔢 𝔦𝔱 𝔰 𝔥𝔬𝔱'.encode('utf-8'))
+READABLE_FILE.seek(0)
+
+VALID_BASE64 = 'bHhtbApweXR6CnJlcXVlc3RzCnJlcXVlc3RzLW50bG0='
+INVALID_BASE64 = VALID_BASE64[1:]
+
+ATTACHMENT_DETAILS = AttachmentFixture(name=ATTACHMENT_NAME, content=VALID_BASE64, id="paRJDH83jrP4KS")
+
+GET_ATTACHMENT_RESPONSE = u"""<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"
+               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <s:Header>
+    <t:ServerVersionInfo MajorVersion="8" MinorVersion="0" MajorBuildNumber="662" MinorBuildNumber="0"
+                         xmlns:t="http://schemas.microsoft.com/exchange/services/2006/types"/>
+  </s:Header>
+  <s:Body>
+    <GetAttachmentResponse xmlns:m="http://schemas.microsoft.com/exchange/services/2006/messages"
+                           xmlns:t="http://schemas.microsoft.com/exchange/services/2006/types"
+                           xmlns="http://schemas.microsoft.com/exchange/services/2006/messages">
+      <m:ResponseMessages>
+        <m:GetAttachmentResponseMessage ResponseClass="Success">
+          <m:ResponseCode>NoError</m:ResponseCode>
+          <m:Attachments>
+            <t:FileAttachment>
+              <t:AttachmentId Id="{att.id}"/>
+              <t:Name>{att.name}</t:Name>
+              <t:Content>{att.content}</t:Content>
+            </t:FileAttachment>
+          </m:Attachments>
+        </m:GetAttachmentResponseMessage>
+      </m:ResponseMessages>
+    </GetAttachmentResponse>
+  </s:Body>
+</s:Envelope>
+""".format(att=ATTACHMENT_DETAILS)
