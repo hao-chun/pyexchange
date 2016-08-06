@@ -21,107 +21,68 @@ class ExchangeBaseConnection(object):
   def send(self, body, headers=None, retries=2, timeout=30, encoding="utf-8"):
     raise NotImplementedError
 
+class ExchangeAuthConnection(ExchangeBaseConnection):
+  """ Base class for authenticated connection """
 
-class ExchangeNTLMAuthConnection(ExchangeBaseConnection):
+  def __init__(self, url, username, password, verify_certificate=True, **kwargs):
+    self.url = url
+    self.username = username
+    self.password = password
+    self.verify_certificate = verify_certificate
+    self.handler = None
+    self.session = None
+    self.password_manager = None
+
+  def _construct_password_manager(self):
+    raise NotImplementedError('Password manager construction missing')
+
+  def build_password_manager(self):
+    if self.password_manager:
+      return self.password_manager
+    log.debug(u'Constructing password manager')
+    self.password_manager = self._construct_password_manager()
+
+    return self.password_manager
+
+  def build_session(self):
+    if self.session:
+      return self.session
+
+    log.debug(u'Constructing opener')
+
+    self.password_manager = self.build_password_manager()
+
+    self.session = requests.Session()
+    self.session.auth = self.password_manager
+
+    return self.session
+
+  def send(self, body, headers=None, retries=2, timeout=30, encoding=u"utf-8"):
+    if not self.session:
+      self.session = self.build_session()
+
+    try:
+      response = self.session.post(self.url, data=body, headers=headers, verify = self.verify_certificate)
+      response.raise_for_status()
+    except requests.exceptions.RequestException as err:
+      log.debug(err.response.content)
+      raise FailedExchangeException(u'Unable to connect to Exchange: %s' % err)
+
+    log.info(u'Got response: {code}'.format(code=response.status_code))
+    log.debug(u'Got response headers: {headers}'.format(headers=response.headers))
+    log.debug(u'Got body: {body}'.format(body=response.text))
+
+    return response.text
+
+class ExchangeNTLMAuthConnection(ExchangeAuthConnection):
   """ Connection to Exchange that uses NTLM authentication """
 
-  def __init__(self, url, username, password, verify_certificate=True, **kwargs):
-    self.url = url
-    self.username = username
-    self.password = password
-    self.verify_certificate = verify_certificate
-    self.handler = None
-    self.session = None
-    self.password_manager = None
+  def _construct_password_manager(self):
+    return HttpNtlmAuth(self.username, self.password)
 
-  def build_password_manager(self):
-    if self.password_manager:
-      return self.password_manager
 
-    log.debug(u'Constructing password manager')
-
-    self.password_manager = HttpNtlmAuth(self.username, self.password)
-
-    return self.password_manager
-
-  def build_session(self):
-    if self.session:
-      return self.session
-
-    log.debug(u'Constructing opener')
-
-    self.password_manager = self.build_password_manager()
-
-    self.session = requests.Session()
-    self.session.auth = self.password_manager
-
-    return self.session
-
-  def send(self, body, headers=None, retries=2, timeout=30, encoding=u"utf-8"):
-    if not self.session:
-      self.session = self.build_session()
-
-    try:
-      response = self.session.post(self.url, data=body, headers=headers, verify = self.verify_certificate)
-      response.raise_for_status()
-    except requests.exceptions.RequestException as err:
-      log.debug(err.response.content)
-      raise FailedExchangeException(u'Unable to connect to Exchange: %s' % err)
-
-    log.info(u'Got response: {code}'.format(code=response.status_code))
-    log.debug(u'Got response headers: {headers}'.format(headers=response.headers))
-    log.debug(u'Got body: {body}'.format(body=response.text))
-
-    return response.text
-
-class ExchangeBasicAuthConnection(ExchangeBaseConnection):
+class ExchangeBasicAuthConnection(ExchangeAuthConnection):
   """ Connection to Exchange that uses Basic HTTP authentication """
 
-  def __init__(self, url, username, password, verify_certificate=True, **kwargs):
-    self.url = url
-    self.username = username
-    self.password = password
-    self.verify_certificate = verify_certificate
-    self.handler = None
-    self.session = None
-    self.password_manager = None
-  
-  def build_password_manager(self):
-    if self.password_manager:
-      return self.password_manager
-
-    log.debug(u'Constructing password manager')
-
-    self.password_manager = HTTPBasicAuth(self.username, self.password)
-
-    return self.password_manager
-
-  def build_session(self):
-    if self.session:
-      return self.session
-
-    log.debug(u'Constructing opener')
-
-    self.password_manager = self.build_password_manager()
-
-    self.session = requests.Session()
-    self.session.auth = self.password_manager
-
-    return self.session
-  
-  def send(self, body, headers=None, retries=2, timeout=30, encoding=u"utf-8"):
-    if not self.session:
-      self.session = self.build_session()
-
-    try:
-      response = self.session.post(self.url, data=body, headers=headers, verify = self.verify_certificate)
-      response.raise_for_status()
-    except requests.exceptions.RequestException as err:
-      log.debug(err.response.content)
-      raise FailedExchangeException(u'Unable to connect to Exchange: %s' % err)
-
-    log.info(u'Got response: {code}'.format(code=response.status_code))
-    log.debug(u'Got response headers: {headers}'.format(headers=response.headers))
-    log.debug(u'Got body: {body}'.format(body=response.text))
-
-    return response.text
+  def _construct_password_manager(self):
+    return HTTPBasicAuth(self.username, self.password)
