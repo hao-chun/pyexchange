@@ -488,6 +488,72 @@ def create_attachment(event, file_name, data):
         )
     )
 
+def create_email(subject, body, recipients, cc_recipients, bcc_recipients, body_type, folder="drafts"):
+    """
+    https://msdn.microsoft.com/EN-US/library/office/aa566468(v=exchg.150).aspx
+    <CreateItem MessageDisposition="SendAndSaveCopy" xmlns="http://schemas.microsoft.com/exchange/services/2006/messages">
+      <SavedItemFolderId>
+        <t:DistinguishedFolderId Id="drafts" />
+      </SavedItemFolderId>
+      <Items>
+        <t:Message>
+          <t:ItemClass>IPM.Note</t:ItemClass>
+          <t:Subject>Project Action</t:Subject>
+          <t:Body BodyType="Text">Priority - Update specification</t:Body>
+          <t:ToRecipients>
+            <t:Mailbox>
+              <t:EmailAddress>sschmidt@example.com</t:EmailAddress>
+            </t:Mailbox>
+          </t:ToRecipients>
+          <t:IsRead>false</t:IsRead>
+        </t:Message>
+      </Items>
+    </CreateItem>
+    Note on Mailbox:
+    https://msdn.microsoft.com/en-us/library/office/aa565036(v=exchg.150).aspx
+    <Mailbox>
+       <Name/>
+       <EmailAddress/>
+       <RoutingType/>
+       <MailboxType/>
+       <ItemId/>
+    </Mailbox>
+    """
+    # Create email addresses first
+    to_recipients = T.ToRecipients(*[T.Mailbox(
+        T.Name(recipient[0]),
+        T.EmailAddress(recipient[1])
+    ) for recipient in recipients])
+    cc_recipients = T.CcRecipients(*[T.Mailbox(
+        T.Name(recipient[0]),
+        T.EmailAddress(recipient[1])
+    ) for recipient in cc_recipients])
+    bcc_recipients = T.BccRecipients(*[T.Mailbox(
+        T.Name(recipient[0]),
+        T.EmailAddress(recipient[1])
+    ) for recipient in bcc_recipients])
+
+    return M.CreateItem(
+        M.SavedItemFolderId(
+            T.DistinguishedFolderId(Id=folder)
+        ),
+        M.Items(
+            T.Message(
+                T.ItemClass('IPM.Note'),
+                T.Subject(subject),
+                T.Body(body, BodyType=body_type),
+                to_recipients,
+                cc_recipients,
+                bcc_recipients,
+                T.IsRead('false'),
+            )
+        )
+
+    ,MessageDisposition='SendAndSaveCopy')
+
+def get_mailboxes():
+    return M.GetSearchableMailboxes()
+
 
 def delete_event(event):
     """

@@ -9,6 +9,7 @@ import logging
 from ..base.calendar import BaseExchangeCalendarEvent, BaseExchangeCalendarService, ExchangeEventOrganizer, ExchangeEventResponse
 from ..base.folder import BaseExchangeFolder, BaseExchangeFolderService
 from ..base.attachment import BaseExchangeAttachment
+from ..base.mail import BaseExchangeEmailService, BaseExchangeEmail
 from ..base.soap import ExchangeServiceSOAP
 from ..exceptions import FailedExchangeException, ExchangeStaleChangeKeyException, ExchangeItemNotFoundException, ExchangeInternalServerTransientErrorException, ExchangeIrresolvableConflictException, InvalidEventType
 from ..compat import BASESTRING_TYPES
@@ -30,7 +31,7 @@ class Exchange2010Service(ExchangeServiceSOAP):
     return Exchange2010CalendarService(service=self, calendar_id=id)
 
   def mail(self):
-    raise NotImplementedError("Sorry - nothin' here. Feel like adding it? :)")
+    return Exchange2010MailService(service=self)
 
   def contacts(self):
     raise NotImplementedError("Sorry - nothin' here. Feel like adding it? :)")
@@ -175,6 +176,31 @@ class Exchange2010CalendarEventList(object):
 
     return self
 
+
+class Exchange2010Email(BaseExchangeEmail):
+  def _send_soap_request(self, subject, body, recipients, cc_recipients, bcc_recipients, body_type):
+    body = soap_request.create_email(subject, body, recipients, cc_recipients, bcc_recipients, body_type)
+    response_xml = self.service.send(body)
+    return self._parse_create_response(response_xml)
+
+  def _parse_create_response(self, root):
+    """
+        @return None if successful, the error message on error
+    """
+    errors = root.xpath('//m:CreateItemResponseMessage[@ResponseClass="Error"]/m:MessageText', namespaces=soap_request.NAMESPACES)
+    if errors:
+        return errors[0].text
+    return None
+
+
+class Exchange2010MailService(BaseExchangeEmailService):
+    email_class = Exchange2010Email
+
+    def _send_get_mailboxes_request(self):
+        body = soap_request.get_mailboxes()
+        import ipdb; ipdb.set_trace()
+        response_xml = self.service.send(body)
+        return response_xml
 
 class Exchange2010CalendarEvent(BaseExchangeCalendarEvent):
 
