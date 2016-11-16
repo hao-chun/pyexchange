@@ -1,4 +1,4 @@
 lxml
 pytz
 requests
-requests-ntlm
+requests-ntlm==0.3.0
