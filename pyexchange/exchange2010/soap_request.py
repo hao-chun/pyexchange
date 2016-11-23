@@ -7,6 +7,7 @@ Unless required by applicable law or agreed to in writing, software?distributed 
 from lxml.builder import ElementMaker
 from ..utils import convert_datetime_to_utc
 from ..compat import _unicode
+from email.utils import parseaddr
 
 MSG_NS = u'http://schemas.microsoft.com/exchange/services/2006/messages'
 TYPE_NS = u'http://schemas.microsoft.com/exchange/services/2006/types'
@@ -37,6 +38,8 @@ def exchange_header():
 def resource_node(element, resources):
   """
   Helper function to generate a person/conference room node from an email address
+  If provided in the form "Joe <email@email.com>" the name will be added as the <Name> element
+  Parsing is done using https://docs.python.org/3/library/email.util.html#email.utils.parseaddr
 
   <t:OptionalAttendees>
     <t:Attendee>
@@ -48,11 +51,15 @@ def resource_node(element, resources):
   """
 
   for attendee in resources:
+    name, email_address = parseaddr(attendee.email)
+    mailbox = T.Mailbox(
+      T.EmailAddress(email_address)
+    )
+    if name:
+      mailbox.append(T.Name(name))
     element.append(
       T.Attendee(
-        T.Mailbox(
-          T.EmailAddress(attendee.email)
-        )
+        mailbox
       )
     )
 
@@ -519,6 +526,7 @@ def create_email(subject, body, recipients, cc_recipients, bcc_recipients, body_
        <ItemId/>
     </Mailbox>
     """
+    # TODO probably should be using the already used resource_node method
     # Create email addresses first
     to_recipients = T.ToRecipients(*[T.Mailbox(
         T.Name(recipient[0]),
