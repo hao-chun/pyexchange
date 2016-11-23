@@ -55,8 +55,9 @@ def resource_node(element, resources):
     mailbox = T.Mailbox(
       T.EmailAddress(email_address)
     )
+    # In order to be valid, the name must come before the email address
     if name:
-      mailbox.append(T.Name(name))
+      mailbox.insert(0, T.Name(name))
     element.append(
       T.Attendee(
         mailbox
